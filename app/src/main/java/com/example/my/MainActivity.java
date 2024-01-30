@@ -2,6 +2,7 @@ package com.example.my;
 
 import static android.view.PixelCopy.request;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
@@ -19,8 +20,12 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.Response.ErrorListener;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.JsonRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private String accessToken;
 
     private Button button;
-    final String URI = "http://192.168.3.3:8081/auth/login";
+    final String URI = "http://192.168.10.59:8081/auth/login";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,10 +66,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 try {
-                    httpClient();
-                } catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
+                    httpClient(usernameEditText.getText().toString(), passwordEditText.getText().toString());
                 } catch (IOException e) {
+                    throw new RuntimeException(e);
+                } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -72,48 +77,44 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void httpClient() throws IOException {
-        RequestQueue queue = Volley.newRequestQueue(this);
+    private void httpClient(String login, String senha) throws IOException, JSONException {
+        JSONObject jsonResponse = new JSONObject();
+        jsonResponse.put("login", login);
+        jsonResponse.put("senha", senha);
 
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, URI,
-                new Response.Listener<String>() {
+        RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
+
+        JsonObjectRequest jsonObjReq = new JsonObjectRequest(Request.Method.POST,
+                URI, jsonResponse,
+                new Response.Listener() {
                     @Override
-                    public void onResponse(String response) {
+                    public void onResponse(Object response) {
                         try {
-                            JSONObject jsonResponse = new JSONObject(response);
-                            String accessToken = jsonResponse.getString("access_token");
-                            Log.e("TAG", "Erro na solicitação autenticada: " + accessToken);
+                            JSONObject jsonObject = new JSONObject(response);
+                            re
                         } catch (JSONException e) {
-                            throw new RuntimeException(e);
+                            throw new RuntimeException();
                         }
+                        Log.e("TAG", "response: " + response);
                     }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                usernameEditText.setText("That didn't work!");
-            }
 
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+
+                        Log.e("TAG", "falha: " + error);
+                    }
         }) {
             @Override
-            protected Map<String, String> getParams() {
-                // Parâmetros necessários para autenticação (por exemplo, nome de usuário e senha)
-                Map<String, String> params = new HashMap<>();
-                params.put("login", usernameEditText.toString());
-                params.put("senha", passwordEditText.toString());
-                return params;
-            }
-
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                // Adiciona o cabeçalho de autenticação (por exemplo, Basic Authentication)
-                Map<String, String> headers = new HashMap<>();
-                String credendial = usernameEditText.toString() + ":" + passwordEditText.toString();
-                headers.put("Authorization", "Basic " + Base64.encodeToString(credendial.getBytes(), Base64.NO_WRAP));
+            public Map getHeaders() throws AuthFailureError {
+                HashMap headers = new HashMap();
+                headers.put("Content-Type", "application/json");
+//                headers.put("apiKey", "xxxxxxxxxxxxxxx");
                 return headers;
             }
         };
-
-        queue.add(stringRequest);
+        queue.add(jsonObjReq);
 
     }
 
